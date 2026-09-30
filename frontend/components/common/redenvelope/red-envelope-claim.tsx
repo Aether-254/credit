@@ -61,6 +61,7 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
   const [detail, setDetail] = useState<RedEnvelopeDetailResponse | null>(null)
   const [claimedAmount, setClaimedAmount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [failedCoverImage, setFailedCoverImage] = useState<string | null>(null)
 
   const bestClaimId = React.useMemo(() => {
     const claims = detail?.claims
@@ -120,7 +121,8 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
   }
 
   // 从后端获取封面图片URL并进行安全验证
-  const coverImage = sanitizeImageUrl(getFileUrl(detail?.red_envelope?.cover_upload_id))
+  const coverImageUrl = sanitizeImageUrl(getFileUrl(detail?.red_envelope?.cover_upload_id))
+  const coverImage = coverImageUrl !== failedCoverImage ? coverImageUrl : undefined
   const heterotypicImage = sanitizeImageUrl(getFileUrl(detail?.red_envelope?.heterotypic_upload_id))
 
   useEffect(() => {
@@ -260,11 +262,12 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
                         >
                           <Image
                             src={coverImage}
-                            alt="cover"
+                            alt=""
                             fill
                             className="object-cover opacity-50"
                             style={{ transform: "scale(1.1)", transformOrigin: "center" }}
                             unoptimized
+                            onError={() => setFailedCoverImage(coverImage)}
                           />
                         </div>
                       )}

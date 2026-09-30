@@ -27,6 +27,9 @@ export function RedEnvelopeCard({
   onOpen,
   className
 }: RedEnvelopeCardProps) {
+  const [failedCoverImage, setFailedCoverImage] = React.useState<string | null>(null)
+  const availableCoverImage = coverImage !== failedCoverImage ? coverImage : undefined
+
   // 预览模式下不播放入场动画
   const isPreview = status === "preview"
 
@@ -43,20 +46,21 @@ export function RedEnvelopeCard({
         className="absolute top-0 h-[78%] overflow-hidden z-10 w-full"
         style={{
           borderRadius: '0 0 100% 100% / 0 0 20% 20%',
-          backgroundColor: coverImage ? '#f35543' : '#E75240',
+          backgroundColor: availableCoverImage ? '#f35543' : '#E75240',
           boxShadow: '0 2px 2px rgba(0,0,0,0.15)'
         }}
       >
         {/* 自定义背景封面 */}
-        {coverImage ? (
+        {availableCoverImage ? (
           <div className="absolute inset-0">
             <Image
-              src={coverImage}
-              alt="红包封面"
+              src={availableCoverImage}
+              alt=""
               fill
               className="object-cover"
               unoptimized
               loading="eager"
+              onError={() => setFailedCoverImage(availableCoverImage)}
             />
             {/* 半透明遮罩以确保内容可读 */}
             <div className="absolute inset-0 bg-black/30 dark:bg-black/50" />
