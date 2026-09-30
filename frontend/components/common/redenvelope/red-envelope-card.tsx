@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { motion } from "motion/react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { RedEnvelopeAvatar } from "./red-envelope-avatar"
 
 export interface RedEnvelopeCardProps {
   status: "preview" | "ready" | "opening"
@@ -27,6 +27,9 @@ export function RedEnvelopeCard({
   onOpen,
   className
 }: RedEnvelopeCardProps) {
+  const [failedCoverImage, setFailedCoverImage] = React.useState<string | null>(null)
+  const availableCoverImage = coverImage !== failedCoverImage ? coverImage : undefined
+
   // 预览模式下不播放入场动画
   const isPreview = status === "preview"
 
@@ -43,20 +46,21 @@ export function RedEnvelopeCard({
         className="absolute top-0 h-[78%] overflow-hidden z-10 w-full"
         style={{
           borderRadius: '0 0 100% 100% / 0 0 20% 20%',
-          backgroundColor: coverImage ? '#f35543' : '#E75240',
+          backgroundColor: availableCoverImage ? '#f35543' : '#E75240',
           boxShadow: '0 2px 2px rgba(0,0,0,0.15)'
         }}
       >
         {/* 自定义背景封面 */}
-        {coverImage ? (
+        {availableCoverImage ? (
           <div className="absolute inset-0">
             <Image
-              src={coverImage}
-              alt="红包封面"
+              src={availableCoverImage}
+              alt=""
               fill
               className="object-cover"
               unoptimized
               loading="eager"
+              onError={() => setFailedCoverImage(availableCoverImage)}
             />
             {/* 半透明遮罩以确保内容可读 */}
             <div className="absolute inset-0 bg-black/30 dark:bg-black/50" />
@@ -71,12 +75,12 @@ export function RedEnvelopeCard({
             transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 20 }}
             className="flex items-center gap-2 opacity-90"
           >
-            <Avatar className="h-8 w-8 rounded-md border border-white/20 shadow-sm">
-              <AvatarImage src={sender?.avatar_url} alt={sender?.username} />
-              <AvatarFallback className="bg-[#FAE5AE] text-[#E75240] font-bold text-xs rounded-md">
-                {sender?.username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <RedEnvelopeAvatar
+              src={sender?.avatar_url}
+              username={sender?.username}
+              className="h-8 w-8 rounded-md border border-white/20 shadow-sm"
+              fallbackClassName="bg-[#FAE5AE] text-[#E75240] font-bold text-xs rounded-md"
+            />
             <span className="text-base font-medium tracking-wide">{sender?.username || '你'} 的红包</span>
           </motion.div>
 
