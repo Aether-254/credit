@@ -2,16 +2,17 @@
 
 import * as React from "react"
 import { useState, useEffect, useCallback } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import Image from "next/image"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import { Gift } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import services from "@/lib/services"
 import { formatDateTime } from "@/lib/utils"
 import type { RedEnvelopeDetailResponse, RedEnvelopeClaim } from "@/lib/services"
 import { getFileUrl } from "@/lib/services/upload/upload.service"
 import { RedEnvelopeCard } from "./red-envelope-card"
+import { RedEnvelopeAvatar } from "./red-envelope-avatar"
 
 interface RedEnvelopeClaimProps {
   id: string
@@ -19,17 +20,47 @@ interface RedEnvelopeClaimProps {
 
 type ClaimState = "loading" | "ready" | "opening" | "opened" | "claimed" | "error"
 
+const truncateText = (value: string | undefined, maxChars: number) => {
+  if (!value) return ""
+  const chars = Array.from(value)
+  if (chars.length <= maxChars) return value
+  return `${ chars.slice(0, maxChars).join("") }…`
+}
+
+const formatClaimedAt = (claimedAt?: string) => {
+  if (!claimedAt) return "-"
+
+  const date = new Date(claimedAt)
+  if (Number.isNaN(date.getTime())) return "-"
+
+  const getShanghaiDateKey = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(d)
+
+  const todayKey = getShanghaiDateKey(new Date())
+  const claimKey = getShanghaiDateKey(date)
+
+  if (claimKey === todayKey) {
+    return new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Shanghai",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(date)
+  }
+
+  return formatDateTime(date)
+}
+
 export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
   const [state, setState] = useState<ClaimState>("loading")
   const [detail, setDetail] = useState<RedEnvelopeDetailResponse | null>(null)
   const [claimedAmount, setClaimedAmount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const truncateText = (value: string | undefined, maxChars: number) => {
-    if (!value) return ""
-    const chars = Array.from(value)
-    if (chars.length <= maxChars) return value
-    return `${ chars.slice(0, maxChars).join("") }…`
-  }
 
   const bestClaimId = React.useMemo(() => {
     const claims = detail?.claims
@@ -49,35 +80,6 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
 
     return topId
   }, [detail?.claims])
-
-  const formatClaimedAt = (claimedAt?: string) => {
-    if (!claimedAt) return "-"
-
-    const date = new Date(claimedAt)
-    if (Number.isNaN(date.getTime())) return "-"
-
-    const getShanghaiDateKey = (d: Date) =>
-      new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Shanghai",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).format(d)
-
-    const todayKey = getShanghaiDateKey(new Date())
-    const claimKey = getShanghaiDateKey(date)
-
-    if (claimKey === todayKey) {
-      return new Intl.DateTimeFormat("zh-CN", {
-        timeZone: "Asia/Shanghai",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).format(date)
-    }
-
-    return formatDateTime(date)
-  }
 
   const loadDetail = useCallback(async () => {
     try {
@@ -272,12 +274,12 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
                   {/* 个人信息 */}
                   <div className="flex flex-col items-center justify-center mt-4 shrink-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <Avatar className="h-6 w-6 rounded-md border border-white/20">
-                        <AvatarImage className="rounded-md" src={envelope?.creator_avatar_url} alt={envelope?.creator_username} />
-                        <AvatarFallback className="bg-[#E75240] text-white text-[10px] rounded-md">
-                          {envelope?.creator_username?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <RedEnvelopeAvatar
+                        src={envelope?.creator_avatar_url}
+                        username={envelope?.creator_username}
+                        className="h-6 w-6 rounded-md border border-white/20"
+                        fallbackClassName="bg-[#E75240] text-white text-[10px] rounded-md"
+                      />
                       <div className="flex items-center gap-1 min-w-0 flex-1">
                         <span className="text-sm font-medium text-foreground/80 truncate">
                           {truncateText(envelope?.creator_username, 12)}
@@ -323,50 +325,87 @@ export function RedEnvelopeClaimPage({ id }: RedEnvelopeClaimProps) {
                       </div>
                     </div>
                     <div className="border-t border-border/30" />
-                    <div className="flex-1 bg-background overflow-y-auto overscroll-contain">
-                      <div className="divide-y divide-border/30">
-                        {detail?.claims.map((claim: RedEnvelopeClaim) => (
-                          <div
-                            key={claim.id}
-                            className="flex items-start justify-between px-4 py-2 gap-3"
-                          >
-                            <div className="flex gap-3 min-w-0 flex-1">
-                              <Avatar className="h-9 w-9 rounded-md border border-border/10 mt-0.5">
-                                <AvatarImage className="rounded-md" src={claim.avatar_url} alt={claim.username} />
-                                <AvatarFallback className="text-xs bg-muted rounded-md">
-                                  {claim.username.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col items-start gap-0.5 min-w-0">
-                                <span className="text-[13px] font-medium text-foreground/90 truncate max-w-[160px] sm:max-w-[200px]">
-                                  {truncateText(claim.username, 12)}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground">
-                                  {formatClaimedAt(claim.claimed_at)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-[96px] text-right">
-                              <span className="text-[13px] font-semibold text-foreground tabular-nums whitespace-nowrap">
-                                {parseFloat(claim.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LDC
-                              </span>
-                              {/* 最佳手气 */}
-                              {envelope?.type === 'random' && bestClaimId === claim.id && (
-                                <div className="flex items-center gap-1 text-[#E1B876] text-[9px]">
-                                  <span>手气最佳</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <RedEnvelopeClaimsList
+                      claims={detail?.claims ?? []}
+                      bestClaimId={envelope?.type === "random" ? bestClaimId : null}
+                    />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function RedEnvelopeClaimsList({ claims, bestClaimId }: { claims: RedEnvelopeClaim[], bestClaimId: string | null }) {
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const getItemKey = useCallback((index: number) => claims[index].id, [claims])
+  const virtualizer = useVirtualizer({
+    count: claims.length,
+    getScrollElement: () => scrollRef.current,
+    getItemKey,
+    estimateSize: () => 56,
+    overscan: 5,
+    useFlushSync: false,
+  })
+
+  return (
+    <div ref={scrollRef} className="flex-1 min-h-0 bg-background overflow-y-auto overscroll-contain">
+      <div
+        role="list"
+        aria-label="红包领取记录"
+        className="relative w-full"
+        style={{ height: virtualizer.getTotalSize() }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const claim = claims[virtualRow.index]
+
+          return (
+            <div
+              key={virtualRow.key}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              role="listitem"
+              aria-posinset={virtualRow.index + 1}
+              aria-setsize={claims.length}
+              className="absolute top-0 left-0 w-full flex items-start justify-between px-4 py-2 gap-3 border-b border-border/30"
+              style={{
+                transform: `translateY(${virtualRow.start}px)`,
+                borderBottomWidth: virtualRow.index === claims.length - 1 ? 0 : undefined,
+              }}
+            >
+              <div className="flex gap-3 min-w-0 flex-1">
+                <RedEnvelopeAvatar
+                  src={claim.avatar_url}
+                  username={claim.username}
+                  className="h-9 w-9 rounded-md border border-border/10 mt-0.5"
+                  fallbackClassName="text-xs bg-muted rounded-md"
+                />
+                <div className="flex flex-col items-start gap-0.5 min-w-0">
+                  <span className="text-[13px] font-medium text-foreground/90 truncate max-w-[160px] sm:max-w-[200px]">
+                    {truncateText(claim.username, 12)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {formatClaimedAt(claim.claimed_at)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-[96px] text-right">
+                <span className="text-[13px] font-semibold text-foreground tabular-nums whitespace-nowrap">
+                  {parseFloat(claim.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LDC
+                </span>
+                {bestClaimId === claim.id && (
+                  <div className="flex items-center gap-1 text-[#E1B876] text-[9px]">
+                    <span>手气最佳</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { motion } from "motion/react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { RedEnvelopeAvatar } from "./red-envelope-avatar"
 
 export interface RedEnvelopeCardProps {
   status: "preview" | "ready" | "opening"
@@ -71,12 +71,12 @@ export function RedEnvelopeCard({
             transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 20 }}
             className="flex items-center gap-2 opacity-90"
           >
-            <Avatar className="h-8 w-8 rounded-md border border-white/20 shadow-sm">
-              <AvatarImage src={sender?.avatar_url} alt={sender?.username} />
-              <AvatarFallback className="bg-[#FAE5AE] text-[#E75240] font-bold text-xs rounded-md">
-                {sender?.username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <RedEnvelopeAvatar
+              src={sender?.avatar_url}
+              username={sender?.username}
+              className="h-8 w-8 rounded-md border border-white/20 shadow-sm"
+              fallbackClassName="bg-[#FAE5AE] text-[#E75240] font-bold text-xs rounded-md"
+            />
             <span className="text-base font-medium tracking-wide">{sender?.username || '你'} 的红包</span>
           </motion.div>
 
