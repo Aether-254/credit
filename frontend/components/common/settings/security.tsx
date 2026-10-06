@@ -12,11 +12,10 @@ import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Spinner } from "@/components/ui/spinner"
 import { useUser } from "@/contexts/user-context"
-import { UserService } from "@/lib/services/user"
 
 export function SecurityMain() {
   const router = useRouter()
-  const { user } = useUser()
+  const { user, updatePayKey } = useUser()
   const hasPayKey = user?.is_pay_key ?? true
   const [setupStep, setSetupStep] = React.useState<'current' | 'password' | 'confirm'>('current')
   const [currentPayKey, setCurrentPayKey] = React.useState("")
@@ -82,7 +81,10 @@ export function SecurityMain() {
 
       setIsSubmitting(true)
       try {
-        await UserService.updatePayKey(payKey, hasPayKey ? currentPayKey : undefined)
+        await updatePayKey(
+          payKey,
+          hasPayKey ? currentPayKey : undefined,
+        )
         toast.success("修改成功", {
           description: "您的安全密码已成功更新",
         })
